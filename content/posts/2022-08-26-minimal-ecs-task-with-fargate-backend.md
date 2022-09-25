@@ -5,7 +5,7 @@ draft: false
 ShowToc: true
 images:
 tags:
-  - devops
+  - aws
   - terraform
 ---
 
