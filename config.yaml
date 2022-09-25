@@ -1,0 +1,117 @@
+---
+baseURL: https://devbaygroup.github.io/
+# baseURL: "/"
+title: Devbay
+paginate: 5
+theme: PaperModX
+
+enableInlineShortcodes: true
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+enableEmoji: false
+# googleAnalytics: XXXXX # [TODO]
+
+minify:
+  disableXML: true
+    # minifyOutput: true
+
+languages:
+  en:
+    languageName: English
+    weight: 1
+    menu:
+      main:
+      - name: Posts
+        url: posts
+        weight: 1
+      - name: Tags
+        url: tags/
+        weight: 2
+      - name: Search
+        url: search/
+        weight: 3
+
+outputs:
+  home:
+  - HTML
+  - RSS
+  - JSON
+
+params:
+  env: production # to enable google analytics, opengraph, twitter-cards and schema.
+  # description:
+  author:
+    author: [Karn Wong, Apiporn Simapornchai]     # multiple authors
+
+  defaultTheme: auto
+    # disableThemeToggle: true
+    # ShowShareButtons: true
+  ShowReadingTime: true
+    # disableSpecial1stPost: true
+  displayFullLangName: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  ShowToc: true
+    # comments: false
+
+  homeInfoParams:
+    Title: Devbay
+    Content: Interesting stuff we've found along the way 🏔
+
+  socialIcons:
+  - name: github
+    url: https://github.com/devbaygroup
+
+  assets:
+    # favicon: "<link / abs url>"
+    # favicon16x16: "<link / abs url>"
+    # favicon32x32: "<link / abs url>"
+    # apple_touch_icon: "<link / abs url>"
+    # safari_pinned_tab: "<link / abs url>"
+
+    # fuseOpts:
+    #     isCaseSensitive: false
+    #     shouldSort: true
+    #     location: 0
+    #     distance: 1000
+    #     threshold: 0.4
+    #     minMatchCharLength: 0
+    #     keys: ["title", "permalink", "summary", "content"]
+
+taxonomies:
+  category: categories
+  tag: tags
+  series: series
+
+markup:
+  highlight:
+    style: dracula
+    noClasses: false
+    guessSyntax: true
+
+privacy:
+  vimeo:
+    disabled: false
+    simple: true
+
+  twitter:
+    disabled: false
+    enableDNT: true
+    simple: true
+
+  instagram:
+    disabled: false
+    simple: true
+
+  youtube:
+    disabled: false
+    privacyEnhanced: true
+
+services:
+  instagram:
+    disableInlineCSS: true
+  twitter:
+    disableInlineCSS: true
