@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://devbaygroup.github.io/tags/aws/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/posts/2022-08-26-minimal-ecs-task-with-fargate-backend/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/posts/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/tags/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/tags/terraform/</loc>
+    <lastmod>2022-08-26T21:10:58+07:00</lastmod>
+  </url><url>
+    <loc>https://devbaygroup.github.io/archives/</loc>
+  </url><url>
+    <loc>https://devbaygroup.github.io/categories/</loc>
+  </url><url>
+    <loc>https://devbaygroup.github.io/search/</loc>
+  </url><url>
+    <loc>https://devbaygroup.github.io/series/</loc>
+  </url>
+</urlset>

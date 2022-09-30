@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>terraform on Devbay</title>
+    <link>https://devbaygroup.github.io/tags/terraform/</link>
+    <description>Recent content in terraform on Devbay</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Fri, 26 Aug 2022 21:10:58 +0700</lastBuildDate><atom:link href="https://devbaygroup.github.io/tags/terraform/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Minimal ECS task with fargate backend</title>
+      <link>https://devbaygroup.github.io/posts/2022-08-26-minimal-ecs-task-with-fargate-backend/</link>
+      <pubDate>Fri, 26 Aug 2022 21:10:58 +0700</pubDate>
+      
+      <guid>https://devbaygroup.github.io/posts/2022-08-26-minimal-ecs-task-with-fargate-backend/</guid>
+      <description>This article was published at https://karnwong.me
+To deploy a web application, there are many ways to go about it. I could spin up a bare VM and set up the environment manually. To make things easier, I could have package the app into docker image. But this still means I have to &amp;ldquo;update&amp;rdquo; the app manually if I add changes to it.
+Things would be super cool if: after I push the changes to master branch, the app would be deployed automatically.</description>
+      <content:encoded><![CDATA[<p><em>This article was published at <a href="https://karnwong.me">https://karnwong.me</a></em></p>
+<p>To deploy a web application, there are many ways to go about it. I could spin up a bare VM and set up the environment manually. To make things easier, I could have package the app into docker image. But this still means I have to &ldquo;update&rdquo; the app manually if I add changes to it.</p>
+<p>Things would be super cool if: after I push the changes to master branch, the app would be deployed automatically. In order to achieve this, I could use AWS ECS task to deploy the app, and add CI/CD to it (because this is 2022 after all).</p>
+<p>And things would be even better if I don&rsquo;t have to set up the infra manually every time I want to deploy an app, enters terraform!</p>
+<p>Below are minimal ecs task with fargate backend setup 😎. Repo <a href="https://github.com/devbaygroup/terraform-aws-ecs-fargate-example">here</a>.</p>
+<p><em>Updated 2022-09-02</em></p>
+<p>Notes: you might need to set up autoscaling on LB connections per target. Also this example contains two target tracking policies for the same service. Race conditions can result in undesirable scaling issues. Thanks John Mille!</p>
+<h2 id="task-definition">Task definition</h2>
+<p>This is equivalent to docker-compose.yaml</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-hcl" data-lang="hcl"><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_cloudwatch_log_group&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  retention_in_days</span> <span class="o">=</span> <span class="m">14</span>
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>              <span class="o">=</span> <span class="s2">&#34;/aws/ecs/${var.service_name}&#34;</span>
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_ecs_task_definition&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  family</span>                   <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">  network_mode</span>             <span class="o">=</span> <span class="s2">&#34;awsvpc&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  requires_compatibilities</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&#34;FARGATE&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">  cpu</span>                      <span class="o">=</span> <span class="m">256</span>
+</span></span><span class="line"><span class="cl"><span class="n">  memory</span>                   <span class="o">=</span> <span class="m">512</span>
+</span></span><span class="line"><span class="cl"><span class="n">  execution_role_arn</span>       <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">task_role</span>
+</span></span><span class="line"><span class="cl"><span class="n">  task_role_arn</span>            <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">task_role</span>
+</span></span><span class="line"><span class="cl"><span class="n">  container_definitions</span> <span class="o">=</span> <span class="k">jsonencode</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span>
+</span></span><span class="line"><span class="cl">      {
+</span></span><span class="line"><span class="cl"><span class="n">        name</span>        <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">        image</span>       <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">image_uri</span>
+</span></span><span class="line"><span class="cl"><span class="n">        essential</span>   <span class="o">=</span> <span class="kt">true</span>
+</span></span><span class="line"><span class="cl"><span class="n">        environment</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">        portMappings</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">          {
+</span></span><span class="line"><span class="cl"><span class="n">            protocol</span>      <span class="o">=</span> <span class="s2">&#34;tcp&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">            containerPort</span> <span class="o">=</span> <span class="m">80</span>
+</span></span><span class="line"><span class="cl"><span class="n">            hostPort</span>      <span class="o">=</span> <span class="m">80</span>
+</span></span><span class="line"><span class="cl">          }
+</span></span><span class="line"><span class="cl">        <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">        logConfiguration</span> <span class="o">=</span> {
+</span></span><span class="line"><span class="cl"><span class="n">          logDriver</span> <span class="o">=</span> <span class="s2">&#34;awslogs&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">          options</span> <span class="o">=</span> {
+</span></span><span class="line"><span class="cl"><span class="n">            awslogs-group</span>         <span class="o">=</span> <span class="k">aws_cloudwatch_log_group</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">name</span>
+</span></span><span class="line"><span class="cl"><span class="n">            awslogs-region</span>        <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">aws_region</span>
+</span></span><span class="line"><span class="cl"><span class="n">            awslogs-stream-prefix</span> <span class="o">=</span> <span class="s2">&#34;ecs&#34;</span>
+</span></span><span class="line"><span class="cl">          }
+</span></span><span class="line"><span class="cl">        }
+</span></span><span class="line"><span class="cl">      }
+</span></span><span class="line"><span class="cl">    <span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">)</span>
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_ecs_service&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>                               <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">  cluster</span>                            <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">ecs_cluster_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  task_definition</span>                    <span class="o">=</span> <span class="k">aws_ecs_task_definition</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">arn</span>
+</span></span><span class="line"><span class="cl"><span class="n">  desired_count</span>                      <span class="o">=</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="n">  deployment_minimum_healthy_percent</span> <span class="o">=</span> <span class="m">50</span>
+</span></span><span class="line"><span class="cl"><span class="n">  deployment_maximum_percent</span>         <span class="o">=</span> <span class="m">200</span>
+</span></span><span class="line"><span class="cl"><span class="n">  launch_type</span>                        <span class="o">=</span> <span class="s2">&#34;FARGATE&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  scheduling_strategy</span>                <span class="o">=</span> <span class="s2">&#34;REPLICA&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">network_configuration</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    security_groups</span>  <span class="o">=</span> <span class="p">[</span><span class="k">var</span><span class="p">.</span><span class="k">alb_id</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">    subnets</span>          <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">subnet_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">    assign_public_ip</span> <span class="o">=</span> <span class="kt">true</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">load_balancer</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    target_group_arn</span> <span class="o">=</span> <span class="k">aws_alb_target_group</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">arn</span>
+</span></span><span class="line"><span class="cl"><span class="n">    container_name</span>   <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">    container_port</span>   <span class="o">=</span> <span class="m">80</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></div><h2 id="ssl-certificate">SSL certificate</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-hcl" data-lang="hcl"><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_acm_certificate&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  domain_name</span>       <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">domain_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">  validation_method</span> <span class="o">=</span> <span class="s2">&#34;DNS&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">lifecycle</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    create_before_destroy</span> <span class="o">=</span> <span class="kt">true</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">  tags</span> <span class="o">=</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    Name</span> <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">domain_name</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></div><h2 id="load-balancer">Load balancer</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-hcl" data-lang="hcl"><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_lb&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>               <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">  internal</span>           <span class="o">=</span> <span class="kt">false</span>
+</span></span><span class="line"><span class="cl"><span class="n">  load_balancer_type</span> <span class="o">=</span> <span class="s2">&#34;application&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  security_groups</span>    <span class="o">=</span> <span class="p">[</span><span class="k">var</span><span class="p">.</span><span class="k">alb_id</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">  subnets</span>            <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">subnet_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  idle_timeout</span>       <span class="o">=</span> <span class="m">3600</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">  enable_deletion_protection</span> <span class="o">=</span> <span class="kt">true</span>
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_alb_target_group&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>        <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">service_name</span>
+</span></span><span class="line"><span class="cl"><span class="n">  port</span>        <span class="o">=</span> <span class="m">80</span>
+</span></span><span class="line"><span class="cl"><span class="n">  protocol</span>    <span class="o">=</span> <span class="s2">&#34;HTTP&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  vpc_id</span>      <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">vpc_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  target_type</span> <span class="o">=</span> <span class="s2">&#34;ip&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">health_check</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    healthy_threshold</span>   <span class="o">=</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    interval</span>            <span class="o">=</span> <span class="s2">&#34;30&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    protocol</span>            <span class="o">=</span> <span class="s2">&#34;HTTP&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    matcher</span>             <span class="o">=</span> <span class="s2">&#34;200&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    timeout</span>             <span class="o">=</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    path</span>                <span class="o">=</span> <span class="k">var</span><span class="p">.</span><span class="k">health_check_path</span>
+</span></span><span class="line"><span class="cl"><span class="n">    unhealthy_threshold</span> <span class="o">=</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_alb_listener&#34; &#34;http&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  load_balancer_arn</span> <span class="o">=</span> <span class="k">aws_lb</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  port</span>              <span class="o">=</span> <span class="m">80</span>
+</span></span><span class="line"><span class="cl"><span class="n">  protocol</span>          <span class="o">=</span> <span class="s2">&#34;HTTP&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">default_action</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    type</span>             <span class="o">=</span> <span class="s2">&#34;forward&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">    target_group_arn</span> <span class="o">=</span> <span class="k">aws_alb_target_group</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">arn</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_alb_listener&#34; &#34;https&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  load_balancer_arn</span> <span class="o">=</span> <span class="k">aws_lb</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  port</span>              <span class="o">=</span> <span class="m">443</span>
+</span></span><span class="line"><span class="cl"><span class="n">  protocol</span>          <span class="o">=</span> <span class="s2">&#34;HTTPS&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">  ssl_policy</span>      <span class="o">=</span> <span class="s2">&#34;ELBSecurityPolicy-2016-08&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  certificate_arn</span> <span class="o">=</span> <span class="k">aws_acm_certificate</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">arn</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">default_action</span> {
+</span></span><span class="line"><span class="cl"><span class="n">    target_group_arn</span> <span class="o">=</span> <span class="k">aws_alb_target_group</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">id</span>
+</span></span><span class="line"><span class="cl"><span class="n">    type</span>             <span class="o">=</span> <span class="s2">&#34;forward&#34;</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></div><h2 id="autoscaling">Autoscaling</h2>
+<p>Because we are using cloud, and I love taking advantage of dynamic resources allocation.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-hcl" data-lang="hcl"><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_appautoscaling_target&#34; &#34;this&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  max_capacity</span>       <span class="o">=</span> <span class="m">2</span>
+</span></span><span class="line"><span class="cl"><span class="n">  min_capacity</span>       <span class="o">=</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="n">  resource_id</span>        <span class="o">=</span> <span class="s2">&#34;service/${var.ecs_cluster_name}/${aws_ecs_service.this.name}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  scalable_dimension</span> <span class="o">=</span> <span class="s2">&#34;ecs:service:DesiredCount&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  service_namespace</span>  <span class="o">=</span> <span class="s2">&#34;ecs&#34;</span>
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_appautoscaling_policy&#34; &#34;memory&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>               <span class="o">=</span> <span class="s2">&#34;memory-autoscaling&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  policy_type</span>        <span class="o">=</span> <span class="s2">&#34;TargetTrackingScaling&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  resource_id</span>        <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">resource_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  scalable_dimension</span> <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">scalable_dimension</span>
+</span></span><span class="line"><span class="cl"><span class="n">  service_namespace</span>  <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">service_namespace</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">target_tracking_scaling_policy_configuration</span> {
+</span></span><span class="line"><span class="cl">    <span class="k">predefined_metric_specification</span> {
+</span></span><span class="line"><span class="cl"><span class="n">      predefined_metric_type</span> <span class="o">=</span> <span class="s2">&#34;ECSServiceAverageMemoryUtilization&#34;</span>
+</span></span><span class="line"><span class="cl">    }
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">    target_value</span> <span class="o">=</span> <span class="m">40</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">resource</span> <span class="s2">&#34;aws_appautoscaling_policy&#34; &#34;cpu&#34;</span> {
+</span></span><span class="line"><span class="cl"><span class="n">  name</span>               <span class="o">=</span> <span class="s2">&#34;cpu-autoscaling&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  policy_type</span>        <span class="o">=</span> <span class="s2">&#34;TargetTrackingScaling&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">  resource_id</span>        <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">resource_id</span>
+</span></span><span class="line"><span class="cl"><span class="n">  scalable_dimension</span> <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">scalable_dimension</span>
+</span></span><span class="line"><span class="cl"><span class="n">  service_namespace</span>  <span class="o">=</span> <span class="k">aws_appautoscaling_target</span><span class="p">.</span><span class="k">this</span><span class="p">.</span><span class="k">service_namespace</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">target_tracking_scaling_policy_configuration</span> {
+</span></span><span class="line"><span class="cl">    <span class="k">predefined_metric_specification</span> {
+</span></span><span class="line"><span class="cl"><span class="n">      predefined_metric_type</span> <span class="o">=</span> <span class="s2">&#34;ECSServiceAverageCPUUtilization&#34;</span>
+</span></span><span class="line"><span class="cl">    }
+</span></span><span class="line"><span class="cl"><span class="n">    target_value</span> <span class="o">=</span> <span class="m">60</span>
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>
